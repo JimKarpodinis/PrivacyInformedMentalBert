@@ -1,9 +1,9 @@
 import os
 import argparse
-from datasets import load_dataset, Dataset, DatasetDict
+from datasets import Dataset, DatasetDict
+from utils import load_data
 
 def rename_columns(dataset: Dataset) -> Dataset:
-
 
     dataset = dataset.rename_column("sentence", "text")
     dataset = dataset.rename_column("top_label", "label")
@@ -21,13 +21,6 @@ def filter_non_stressors(dataset: Dataset) -> Dataset:
     """Filter out records which signify that there is no stressor"""
 
     return dataset.filter(lambda record: record["is_stressor"] == 1)
-
-
-def load_SAD_dataset(data_dir: str) -> Dataset:
-
-    data_dir = os.path.join(os.getcwd(), data_dir)
-    dataset = load_dataset("csv", data_dir=data_dir, split="train")
-    return dataset
 
 
 def split_dataset(dataset: Dataset, file_name: str) -> Dataset:
@@ -57,7 +50,7 @@ if __name__ == "__main__":
     data_dir = args.data_dir
 
     breakpoint()
-    dataset = load_SAD_dataset(data_dir)
+    dataset = load_data(data_dir)
     
     dataset = filter_non_stressors(dataset)
     dataset = rename_columns(dataset)
