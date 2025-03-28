@@ -36,3 +36,16 @@ def compute_metrics(eval_preds):
 
     return {"accuracy": accuracy, "f1": f1}
     
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--model_name", help=" The hf model name", type=str)
+
+    args = parser.parse_args()
+    model_name = args.model_name
+
+    model = PretrainedModel(model_name)
+
+    check_model_performance(model)
