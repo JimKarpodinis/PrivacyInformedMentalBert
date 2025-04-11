@@ -1,5 +1,8 @@
-from utils import load_data
+import os
+from utils import load_data, split_dataset, write_dataset, recast_columns
+import argparse
 from datasets import Dataset, DatasetDict
+from datasets.exceptions import DatasetGenerationCastError
 
 
 def extract_label_from_response(dataset: Dataset) -> Dataset:
@@ -14,49 +17,63 @@ def extract_label_from_response(dataset: Dataset) -> Dataset:
         else 0)})
 
 
-def rename_column(dataset: Dataset) -> Dataset:
+def rename_column(dataset: Dataset, previous_col_name: str="post", next_col_name: str="text") -> Dataset:
 
-    return dataset.rename_column("post", "text")
+    return dataset.rename_column(previous_col_name, next_col_name)
+
+
+def _extract_question(record: dict) -> dict:
+    """Extract question from test dataset"""
+
+    question_index = record["query"].find("Question")
+    
+    record["question"] = record["query"][question_index:]
+
+    return record
+
+
+def _extract_post(record: dict) -> dict:
+    """Extract post from test dataset"""
+
+    question_index = record["query"].find("Question")
+    
+    record["post"] = record["query"][:question_index]
+
+    return record
 
 
 def _remove_post_prefix(record: dict) -> dict:
 
-    """ Remove the prefix 'Post:' from the post column"
+    """Remove the prefix 'Post:' from the post column"""
 
     post_index = record["post"].find(":")
     # Find the first instance of the colon character
     # It is always after the word post. 
 
-    record["post"] = record["text"][post_index:]
+    record["post"] = record["post"][post_index:]
 
     return record
 
 
+def extract_post(dataset: Dataset) -> Dataset:
+
+    return dataset.map(lambda record: _extract_post(record))
+
+
+def extract_question(dataset: Dataset) -> Dataset:
+
+    return dataset.map(lambda record: _extract_question(record),
+            remove_columns=["query"])
+
+
 def remove_post_prefix(record: dict) -> dict:
     
-    return dataset.map(lambda record: _remove_post_field_prefix(record))
+    return dataset.map(lambda record: _remove_post_prefix(record))
 
 
-def select_columns(dataset: Dataset) -> Dataset
+def select_columns(dataset: Dataset) -> Dataset:
 
     return dataset.select_columns(["text", "label"]) 
-
-
-def split_dataset(dataset: Dataset, file_name: str) -> Dataset:
-    """Split dataset to training and testing """
-
-    dataset_dict = dataset.train_test_split(test_size=0.2, stratify="labels")
-    dataset_train_dict = dataset_dict['train'].train_test_split(test_size=0.2, stratify="labels")
-
-    dataset_train = dataset_train_dict['train']
-    dataset_validation = dataset_train_dict['test']
-    dataset_test = dataset_dict['test']
-
-    file_name = file_name.removesuffix(".csv")
-    
-    dataset_train.to_csv(f"./data/processed/Dreaddit_dataset/{file_name}_train_dataset.csv", index = False)
-    dataset_validation.to_csv(f"./data/processed/Dreaddit_dataset/{file_name}_validation_dataset.csv", index = False)
-    dataset_test.to_csv(f"./data/processed/Dreaddit_dataset/{file_name}_test_dataset.csv", index = False)
 
 
 if __name__ == "__main__":
@@ -68,11 +85,31 @@ if __name__ == "__main__":
     args = parser.parse_args()
     data_dir = args.data_dir
 
-    dataset = load_data(data_dir)
+    try:
+        dataset = load_data(data_dir)
+
+    except DatasetGenerationCastError: 
+        test_data_path = os.path.join(data_dir, "DR_test.csv")
+
+        dataset = load_data(data_files=test_data_path)
+        # Must change the test split column names first
+
+        dataset = extract_post(dataset)
+        dataset = extract_question(dataset)
+        dataset = rename_column(dataset, "gpt-3.5-turbo", "response")
+        write_dataset(dataset, test_data_path)
+
+        dataset = load_data(data_dir=data_dir)
+
+
+    breakpoint()
     dataset = remove_post_prefix(dataset)
 
     dataset = rename_column(dataset)
     dataset = extract_label_from_response(dataset)
     dataset = select_columns(dataset)
     
-    split_dataset(dataset)
+    label_names = ["0", "1"]
+    dataset = recast_columns(dataset, label_names)
+    split_dataset(dataset, data_dir)
+
