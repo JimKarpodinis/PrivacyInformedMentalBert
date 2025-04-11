@@ -86,7 +86,7 @@ if __name__ == "__main__":
     data_dir = args.data_dir
 
     try:
-        dataset = load_data(data_dir)
+        dataset = load_data(data_dir, split="all")
 
     except DatasetGenerationCastError: 
         test_data_path = os.path.join(data_dir, "DR_test.csv")
@@ -99,7 +99,7 @@ if __name__ == "__main__":
         dataset = rename_column(dataset, "gpt-3.5-turbo", "response")
         write_dataset(dataset, test_data_path)
 
-        dataset = load_data(data_dir=data_dir)
+        dataset = load_data(data_dir=data_dir, split="all")
 
 
     breakpoint()
