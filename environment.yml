@@ -1,0 +1,15 @@
+name: PrivacyInformedMentalBertEnv
+
+channels:
+  - defaults
+  - anaconda
+  - conda-forge
+
+dependencies:
+  - python=3.11
+  - datasets
+  - transformers
+  - evaluate
+  - pytorch
+  - scikit-learn
+  - accelerate
