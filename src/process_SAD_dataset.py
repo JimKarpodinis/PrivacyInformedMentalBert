@@ -32,7 +32,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     data_dir = args.data_dir
 
-    dataset = load_data(data_dir)
+    dataset = load_data(data_dir, split="all")
 
     label_names = ["Emotional Turmoil", "Everyday Decision Making",
             "Other", "Work", "Social Relationships",

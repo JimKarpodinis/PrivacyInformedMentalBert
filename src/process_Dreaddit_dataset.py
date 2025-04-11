@@ -16,8 +16,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     data_dir = args.data_dir
 
-    dataset = load_data(data_dir)
+    dataset = load_data(data_dir, split="all")
     dataset = recast_columns(dataset, ["0", "1"])
     
     dataset = select_columns(dataset)
-    split_dataset(dataset)
+    split_dataset(dataset, data_dir)
