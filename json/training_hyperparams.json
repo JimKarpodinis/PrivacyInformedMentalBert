@@ -1,0 +1,11 @@
+{"output_dir": "model_classifier",
+       	"num_train_epochs": 100,
+       	"learning_rate": 0.01,
+       	"eval_strategy": "epoch",
+       	"save_strategy": "epoch",
+       	"per_device_train_batch_size": 64,
+       	"per_device_eval_batch_size": 64,
+       	"logging_strategy": "epoch",
+       	"load_best_model_at_end": true,
+       	"save_only_model": true,
+       	"save_total_limit": 10}
