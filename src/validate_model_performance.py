@@ -5,11 +5,13 @@ The models to be checked are BERT, RoBERTa, BioBERT, ClinicalBERT, MentalBERT, M
 import os
 import argparse
 import json
+from typing import Type, Callable
 
 from transformers import AutoTokenizer, BertForSequenceClassification, TrainingArguments, DataCollatorWithPadding, Trainer
 import evaluate
 from datasets import Dataset
 import torch
+from torch.utils.data import DataLoader
 import numpy as np
 
 from utils import load_data
@@ -22,10 +24,9 @@ def compute_metrics(eval_preds: tuple) -> dict:
 
     logits, labels = eval_preds
     preds = logits.argmax(axis=-1)
-    breakpoint()
 
-    recall = recall_metric.compute(predictions=preds, references=labels)
-    f1 = f1_metric.compute(predictions=preds, references=labels)   
+    recall = recall_metric.compute(predictions=preds, references=labels)["recall"]
+    f1 = f1_metric.compute(predictions=preds, references=labels)["f1"]   
 
     return {"recall": recall, "f1": f1}
     
@@ -33,10 +34,10 @@ def compute_metrics(eval_preds: tuple) -> dict:
 def define_trainer(model: BertForSequenceClassification,
         dataset: Dataset,
         collator: DataCollatorWithPadding,
-        training_args: dict) -> Trainer:
+        training_args: dict,
+        trainer_cls: Type[Trainer]) -> Trainer:
 
-
-    return Trainer(model=model,
+    return trainer_cls(model=model,
             data_collator=collator,
             args=training_args,
             compute_metrics=compute_metrics,
@@ -58,10 +59,41 @@ def define_training_args(
     return training_args
 
 
-def tokenize_sentences(examples: list) -> list:
+def tokenize_sentences(examples: list, tokenizer: AutoTokenizer) -> list:
 
     return tokenizer(examples["text"])
 
+
+def main(model_name: str, data_dir: str, trainer_cls: Type[Trainer]):
+
+    hf_token = os.getenv("HF_TOKEN")
+
+    #----------------------------------------------------------------------------
+    dataset = load_data(data_dir=data_dir)
+    dataset.set_format("torch")
+
+    model = BertForSequenceClassification.from_pretrained(model_name, token=hf_token)
+
+    for param in model.base_model.parameters():
+        param.requires_grad = False
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
+    training_args = define_training_args()
+    #----------------------------------------------------------------------------
+
+    collator = DataCollatorWithPadding(tokenizer=tokenizer)
+
+    tokenized_dataset = dataset.map(lambda batch: tokenize_sentences(batch, tokenizer=tokenizer), batched=True)
+
+    trainer = define_trainer(model=model,
+                training_args=training_args,
+                collator=collator,
+                dataset=tokenized_dataset,
+                trainer_cls = trainer_cls)
+
+    trainer.train()
+    _, _, metrics = trainer.predict(tokenized_dataset["test"])
+    trainer.save_metrics(split="test", metrics=metrics, combined=False)
 
 if __name__ == "__main__":
 
@@ -77,26 +109,6 @@ if __name__ == "__main__":
     model_name = args.model_name
     data_dir = args.data_dir
 
-    hf_token = os.getenv("HF_TOKEN")
+    main(trainer_cls= Trainer, model_name= model_name, data_dir= data_dir)
 
-    dataset = load_data(data_dir=data_dir)
-    dataset.set_format("torch")
 
-    model = BertForSequenceClassification.from_pretrained(model_name, token=hf_token)
-
-    for param in model.base_model.parameters():
-        param.requires_grad = False
-
-    tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
-    collator = DataCollatorWithPadding(tokenizer=tokenizer)
-    training_args = define_training_args()
-
-    tokenized_dataset = dataset.map(tokenize_sentences, batched=True)
-
-    trainer = define_trainer(model=model,
-                training_args=training_args,
-                collator=collator,
-                dataset=tokenized_dataset)
-
-    trainer.train()
-    trainer.evaluate()
