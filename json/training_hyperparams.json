@@ -1,5 +1,6 @@
-{"output_dir": "model_classifier",
-       	"num_train_epochs": 100,
+{"output_dir": "model_clf_dreddit",
+	"logging_dir": "logs_clf_dreddit",
+       	"num_train_epochs": 10,
        	"learning_rate": 0.01,
        	"eval_strategy": "epoch",
        	"save_strategy": "epoch",
@@ -8,4 +9,4 @@
        	"logging_strategy": "epoch",
        	"load_best_model_at_end": true,
        	"save_only_model": true,
-       	"save_total_limit": 10}
+       	"save_total_limit": 5}
