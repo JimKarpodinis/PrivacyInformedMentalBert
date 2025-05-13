@@ -1,13 +1,25 @@
 from datasets import load_dataset, Dataset, ClassLabel
 import os
 from typing import Union
+from transformers import AutoTokenizer
+
+
+def tokenize_sentences(examples: dict, tokenizer: AutoTokenizer) -> dict:
+
+    return tokenizer(examples["text"], truncation=True,
+            padding="max_length", max_length=512)
+
+
+def rename_columns(dataset: Dataset) -> Dataset:
+
+    return dataset.rename_column("label", "labels")
 
 
 def recast_columns(dataset: Dataset, class_names: list) -> Dataset:
 
     features = dataset.features.copy()
 
-    features["label"] = ClassLabel(names=class_names)
+    features["labels"] = ClassLabel(names=class_names)
 
     return dataset.cast(features)
 
@@ -36,8 +48,8 @@ def load_data(data_dir: Union[str, None] =  None,
 def split_dataset(dataset: Dataset, data_dir: str) -> Dataset:
     """Split dataset to training and testing """
 
-    dataset_dict = dataset.train_test_split(test_size=0.2, stratify_by_column="label")
-    dataset_train_dict = dataset_dict['train'].train_test_split(test_size=0.2, stratify_by_column="label")
+    dataset_dict = dataset.train_test_split(test_size=0.2, stratify_by_column="labels")
+    dataset_train_dict = dataset_dict['train'].train_test_split(test_size=0.2, stratify_by_column="labels")
 
     dataset_train = dataset_train_dict['train']
     dataset_validation = dataset_train_dict['test']
