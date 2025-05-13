@@ -3,11 +3,13 @@ Finetune the models with diffential privacy contraints
 The models to be checked are BERT, RoBERTa, BioBERT, ClinicalBERT, MentalBERT, MentalRoBERTa
 """
 from datetime import datetime
+import random
 import argparse
 import os
 import json
 from datasets import load_dataset
 from opacus import PrivacyEngine
+import numpy as np
 import datasets
 from transformers import BertForSequenceClassification, AutoTokenizer, BertConfig
 import torch
@@ -101,7 +103,8 @@ def main(model_name: str, data_dir: str, epochs: int, seed: int):
     # TODO: Create inference statistics file
     # Dir structure to be like 'seed=<seed>'
     # TODO: Run training without dp
-    # TODO: Run torch summary 
+    # for α = {best_alpha} TODO: Run torch summary 
+    
 
 
     set_seed(seed)
@@ -172,7 +175,7 @@ def main(model_name: str, data_dir: str, epochs: int, seed: int):
 
         avg_loss = train_one_epoch(epoch, writer, model, train_loader, optimizer)
 
-        epsilon, best_alpha = privacy_engine.get_epsilon(delta=10**-5)
+        epsilon = privacy_engine.get_epsilon(delta=10**-5)
 
         writer.add_scalars('Epsilon per Epoch', {"Epsilon": epsilon}, epoch + 1)
 
@@ -206,19 +209,25 @@ def main(model_name: str, data_dir: str, epochs: int, seed: int):
         # Track best performance, and save the model's state
         if avg_vloss < best_vloss:
 
-            best_epsilon, _ = privacy_engine.get_epsilon(
+            best_epsilon = privacy_engine.get_epsilon(
                     delta=10**-5)
 
             best_model = model
+            epoch_best = epoch + 1
 
 
-    best_model._module.state_dict(["opacus_epsilon"]) = best_epsilon
 
     model_path = f"{training_args['output_dir']}/seed={seed}"
     os.makedirs(model_path, exist_ok=True)
 
+    with open(
+            os.path.join(
+                model_path, "training_metadata.json"), "w") as f:
+
+                json.dump({"opacus_epsilon": best_epsilon, "epoch": epoch_best}, f)
+
     best_model._module.save_pretrained(model_path, from_pt=True)
-    print(f"(ε = {epsilon:.2f}, δ = {delta}) for α = {best_alpha}")
+    print(f"(ε = {best_epsilon:.2f}, δ = {10**-5})")
 
 
 if __name__ == "__main__":
@@ -230,7 +239,7 @@ if __name__ == "__main__":
     parser.add_argument("--data_dir",
             help="The directory where the data reside", type=str)
 
-    parser.add_argument("--epochs", help="The number of epochs to train the model", type=int)
+    parser.add_argument("--epochs", help="The number of epochs to train the model", type=int, default=18)
 
     parser.add_argument("--seed", help="The random seed number to be used", type=int)
 
