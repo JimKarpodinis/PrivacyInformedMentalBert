@@ -6,14 +6,14 @@ from utils import load_data, recast_columns, split_dataset
 def rename_columns(dataset: Dataset) -> Dataset:
 
     dataset = dataset.rename_column("sentence", "text")
-    dataset = dataset.rename_column("top_label", "label")
+    dataset = dataset.rename_column("top_label", "labels")
 
     return dataset
  
 
 def select_columns(dataset: Dataset) -> Dataset:
 
-    return dataset.select_columns(["text", "label"])
+    return dataset.select_columns(["text", "labels"])
 
 
 def filter_non_stressors(dataset: Dataset) -> Dataset:
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     dataset = filter_non_stressors(dataset)
     dataset = rename_columns(dataset)
     dataset = select_columns(dataset)
-    breakpoint()
+
     dataset = recast_columns(dataset, label_names)
 
     split_dataset(dataset, data_dir)
