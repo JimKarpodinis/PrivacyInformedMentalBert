@@ -13,25 +13,11 @@ import numpy as np
 import datasets
 from transformers import BertForSequenceClassification, AutoTokenizer, BertConfig
 import torch
-from utils import tokenize_sentences
+from utils import tokenize_sentences, define_training_args
 from torch.utils.tensorboard.writer import SummaryWriter
 from torch.utils.data import DataLoader
 from torch.nn import CrossEntropyLoss
 from torch.optim import AdamW
-
-
-def define_training_args(
-        file_name: str="training_hyperparams.json") -> dict:
-    
-    file_name = os.path.join("json", file_name)
-
-    with open(file_name, "rb") as f:
-
-        configuration = json.load(f)
-
-        training_args = configuration
-
-    return training_args
 
 
 def set_seed(seed: int = 42):
@@ -45,12 +31,16 @@ def set_seed(seed: int = 42):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def count_parameters(model, only_trainable=True):
-    if only_trainable:
-        return sum(p.numel() for p in model.parameters() if p.requires_grad)
-        # Only clf params are counted, expect small number
-    else:
-        return sum(p.numel() for p in model.parameters())
+
+def count_parameters(model):
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    non_trainable_params = total_params - trainable_params
+    return {
+        'total_params': total_params,
+        'trainable_params': trainable_params,
+        'non_trainable+_params': non_trainable_params
+    }
 
 
 def train_one_epoch(epoch_index: int, tb_writer: SummaryWriter,
@@ -93,21 +83,20 @@ def train_one_epoch(epoch_index: int, tb_writer: SummaryWriter,
     return last_loss
 
 
-def main(model_name: str, data_dir: str, epochs: int, seed: int):
+def main(model_name: str, data_dir: str, seed: int):
 
-    # TODO: Modify inference to inference per seed
-    # TODO: Use multiple seeds and find avg and sd
-    #  Might need to test directly after training
-    # TODO: Get last epoch epsilon
+    # Might need to test directly after training
+    # TODO: Use train args in both scripts
+    # TODO: Instead of model dir arg use training args directly
     # TODO: Check when does it basically converge
-    # TODO: Create inference statistics file
-    # Dir structure to be like 'seed=<seed>'
-    # TODO: Run training without dp
-    # for α = {best_alpha} TODO: Run torch summary 
+    # TODO: Use same or greater than dp finetuning epochs for non dp
+    # TODO: Run torch summary
+    # TODO: Add a json file for all seeds
     
 
-
     set_seed(seed)
+    training_args = define_training_args()
+
     hf_token = os.getenv("HF_TOKEN")
     privacy_engine = PrivacyEngine()
     #------------------------------------------------------------------------
@@ -125,14 +114,15 @@ def main(model_name: str, data_dir: str, epochs: int, seed: int):
     training_args = define_training_args()
 
     train_dataset = dataset_dict["train"]
+    num_labels = len(train_dataset["labels"].unique())
 
 
     validation_dataset = dataset_dict["validation"]
 
-    # config = BertConfig(max_position_embeddings=10000)
-
     model = BertForSequenceClassification.from_pretrained(
-            model_name, token=hf_token) # , config=config)
+            model_name, token=hf_token, num_labels=num_labels) # , config=config)
+
+    model_params = count_trainable_params(model)
 
     model.to(device)
 
@@ -155,9 +145,9 @@ def main(model_name: str, data_dir: str, epochs: int, seed: int):
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     writer = SummaryWriter(training_args["logging_dir"])
 
-    EPOCHS = epochs
+    EPOCHS = training_args["epochs"]
 
-    best_vloss = 1_000_000.
+    best_vloss = 1_000_000
 
     for epoch in range(EPOCHS):
         print('EPOCH {}:'.format(epoch + 1))
@@ -224,7 +214,12 @@ def main(model_name: str, data_dir: str, epochs: int, seed: int):
             os.path.join(
                 model_path, "training_metadata.json"), "w") as f:
 
-                json.dump({"opacus_epsilon": best_epsilon, "epoch": epoch_best}, f)
+                json.dump({"opacus_epsilon": best_epsilon, "epoch": epoch_best,
+                    "trainable_params": model_params["trainable_params"], 
+                    "total_params": model_params["total_params"],
+                    "non_trainable_params": model_params["non_trainable_params"]}, f)
+
+
 
     best_model._module.save_pretrained(model_path, from_pt=True)
     print(f"(ε = {best_epsilon:.2f}, δ = {10**-5})")
@@ -238,8 +233,6 @@ if __name__ == "__main__":
 
     parser.add_argument("--data_dir",
             help="The directory where the data reside", type=str)
-
-    parser.add_argument("--epochs", help="The number of epochs to train the model", type=int, default=18)
 
     parser.add_argument("--seed", help="The random seed number to be used", type=int)
 
