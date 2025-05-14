@@ -14,7 +14,7 @@ import torch
 from torch.utils.data import DataLoader
 import numpy as np
 
-from utils import load_data
+from utils import load_data, define_training_args
 
 
 def compute_metrics(eval_preds: tuple) -> dict:
@@ -25,8 +25,16 @@ def compute_metrics(eval_preds: tuple) -> dict:
     logits, labels = eval_preds
     preds = logits.argmax(axis=-1)
 
-    recall = recall_metric.compute(predictions=preds, references=labels)["recall"]
-    f1 = f1_metric.compute(predictions=preds, references=labels)["f1"]   
+    num_labels = logits.shape[1]
+    averaging_method = "weighted" if num_labels > 2 else "binary"
+
+    recall = recall_metric.compute(
+            predictions=preds, references=labels,
+            average=averaging_method)["recall"]
+
+    f1 = f1_metric.compute(
+            predictions=preds,
+            references=labels, average=averaging_method)["f1"]   
 
     return {"recall": recall, "f1": f1}
     
@@ -45,20 +53,6 @@ def define_trainer(model: BertForSequenceClassification,
             eval_dataset = dataset["validation"],)
 
 
-def define_training_args(
-        file_name: str="training_hyperparams.json") -> TrainingArguments:
-    
-    file_name = os.path.join("json", file_name)
-
-    with open(file_name, "rb") as f:
-
-        configuration = json.load(f)
-
-        training_args = TrainingArguments(**configuration)
-
-    return training_args
-
-
 def tokenize_sentences(examples: list, tokenizer: AutoTokenizer) -> list:
 
     return tokenizer(examples["text"])
@@ -72,7 +66,9 @@ def main(model_name: str, data_dir: str, trainer_cls: Type[Trainer]):
     dataset = load_data(data_dir=data_dir)
     dataset.set_format("torch")
 
-    model = BertForSequenceClassification.from_pretrained(model_name, token=hf_token)
+    num_labels = len(dataset["train"]["labels"].unique())
+
+    model = BertForSequenceClassification.from_pretrained(model_name, token=hf_token, num_labels=num_labels)
 
     for param in model.base_model.parameters():
         param.requires_grad = False
