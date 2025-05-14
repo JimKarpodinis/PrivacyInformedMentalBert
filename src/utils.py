@@ -1,7 +1,21 @@
 from datasets import load_dataset, Dataset, ClassLabel
 import os
 from typing import Union
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, TrainingArguments
+
+
+def define_training_args(
+        file_name: str="training_hyperparams.json") -> TrainingArguments:
+    
+    file_name = os.path.join("json", file_name)
+
+    with open(file_name, "rb") as f:
+
+        configuration = json.load(f)
+
+        training_args = TrainingArguments(**configuration)
+
+    return training_args
 
 
 def tokenize_sentences(examples: dict, tokenizer: AutoTokenizer) -> dict:
