@@ -13,6 +13,7 @@ from datasets import Dataset
 import torch
 from torch.utils.data import DataLoader
 import numpy as np
+from sklearn.metrics import classification_report
 
 from utils import load_data, define_training_args
 
@@ -21,6 +22,8 @@ def compute_metrics(eval_preds: tuple) -> dict:
 
     recall_metric = evaluate.load("recall")
     f1_metric = evaluate.load("f1")
+    precision_metric = evaluate.load("precision")
+    accuracy_metric = evaluate.load("accuracy")
 
     logits, labels = eval_preds
     preds = logits.argmax(axis=-1)
@@ -32,20 +35,45 @@ def compute_metrics(eval_preds: tuple) -> dict:
             predictions=preds, references=labels,
             average=averaging_method)["recall"]
 
+    accuracy = accuracy_metric.compute(
+            predictions=preds, references=labels,
+            )["accuracy"]
+
+    precision = precision_metric.compute(
+            predictions=preds, references=labels,
+            average=averaging_method)["precision"]
+
     f1 = f1_metric.compute(
             predictions=preds,
             references=labels, average=averaging_method)["f1"]   
 
-    return {"recall": recall, "f1": f1}
+    clf_report = classification_report(labels, preds, output_dict=True)
+
+    evals = {"recall": recall, "f1": f1, "accuracy": accuracy, "precision": precision}
+
+    evals.update(clf_report)
+
+    return evals
     
 
-def define_trainer(model: BertForSequenceClassification,
+def model_init():
+
+    model =  BertForSequenceClassification.from_pretrained(
+            model_name, token=os.getenv("HF_TOKEN")) # , num_labels=num_labels)
+
+    for param in model.base_model.parameters():
+        param.requires_grad = False
+
+    return model
+
+
+def define_trainer(model_init: Callable[[], BertForSequenceClassification],
         dataset: Dataset,
         collator: DataCollatorWithPadding,
         training_args: dict,
         trainer_cls: Type[Trainer]) -> Trainer:
 
-    return trainer_cls(model=model,
+    return trainer_cls(model_init=model_init,
             data_collator=collator,
             args=training_args,
             compute_metrics=compute_metrics,
@@ -68,12 +96,7 @@ def main(model_name: str, data_dir: str, trainer_cls: Type[Trainer]):
 
     num_labels = len(dataset["train"]["labels"].unique())
 
-    model = BertForSequenceClassification.from_pretrained(model_name, token=hf_token, num_labels=num_labels)
-
-    for param in model.base_model.parameters():
-        param.requires_grad = False
-
-    tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, token=os.getenv("HF_TOKEN"))
     training_args = define_training_args()
     #----------------------------------------------------------------------------
 
@@ -81,7 +104,7 @@ def main(model_name: str, data_dir: str, trainer_cls: Type[Trainer]):
 
     tokenized_dataset = dataset.map(lambda batch: tokenize_sentences(batch, tokenizer=tokenizer), batched=True)
 
-    trainer = define_trainer(model=model,
+    trainer = define_trainer(model_init=model_init,
                 training_args=training_args,
                 collator=collator,
                 dataset=tokenized_dataset,
