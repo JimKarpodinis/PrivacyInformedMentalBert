@@ -1,4 +1,5 @@
 from datasets import load_dataset, Dataset, ClassLabel
+import json
 import os
 from typing import Union
 from transformers import AutoTokenizer, TrainingArguments
@@ -16,6 +17,22 @@ def define_training_args(
         training_args = TrainingArguments(**configuration)
 
     return training_args
+
+
+def write_json_file(path: str, dict_: dict):
+
+    with open(path, "w") as f:
+
+        json.dump(dict_, f)
+
+
+def read_json_file(path: str) -> dict: 
+
+    with open(path, "rb") as f:
+
+        dict_ = json.load(f)
+
+    return dict_
 
 
 def tokenize_sentences(examples: dict, tokenizer: AutoTokenizer) -> dict:
