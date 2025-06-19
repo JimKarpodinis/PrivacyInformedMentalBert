@@ -1,0 +1,6 @@
+python src/dp_finetune_model.py --model_name "mental/mental-bert-base-uncased" --data_dir "data/processed/Dreaddit_dataset" --seed 42
+python src/dp_finetune_model.py --model_name "mental/mental-bert-base-uncased" --data_dir "data/processed/Dreaddit_dataset" --seed 0
+python src/dp_finetune_model.py --model_name "mental/mental-bert-base-uncased" --data_dir "data/processed/Dreaddit_dataset" --seed 1
+python src/dp_finetune_model.py --model_name "mental/mental-bert-base-uncased" --data_dir "data/processed/Dreaddit_dataset" --seed 1234
+python src/dp_finetune_model.py --model_name "mental/mental-bert-base-uncased" --data_dir "data/processed/Dreaddit_dataset" --seed 100 
+python src/inference.py --data_dir data/processed/Dreaddit_dataset
