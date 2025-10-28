@@ -39,7 +39,7 @@ def count_parameters(model):
     return {
         'total_params': total_params,
         'trainable_params': trainable_params,
-        'non_trainable+_params': non_trainable_params
+        'non_trainable_params': non_trainable_params
     }
 
 
@@ -122,7 +122,7 @@ def main(model_name: str, data_dir: str, seed: int):
     model = BertForSequenceClassification.from_pretrained(
             model_name, token=hf_token, num_labels=num_labels) # , config=config)
 
-    model_params = count_trainable_params(model)
+    model_params = count_parameters(model)
 
     model.to(device)
 
