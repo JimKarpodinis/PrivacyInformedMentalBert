@@ -1,0 +1,25 @@
+name: PrivacInformedMentalBertEnv
+
+channels:
+  - conda-forge
+  - pytorch
+  - anaconda
+  - nvidia
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+dependencies:
+  - python=3.11.11
+  - huggingface_accelerate=1.4.0
+  - huggingface_hub=0.30.2
+  - evaluate=0.4.3
+  - datasets=3.5.0
+  - transformers=4.51.3
+  - s3fs=2024.12.0
+  - pytorch=2.5.1
+  - hf-xet
+  - pytorch-cuda=11.8
+  - pytorch-gpu=2.5.1
+  - scikit-learn
+  - opacus
+  - optuna
+  - tensorboard
