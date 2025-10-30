@@ -38,6 +38,20 @@ Repo for Privacy Informed Mental Bert
     ├── utils.py
     └── validate\_model\_performance.py
 
+# Reproduce environment:
+
+    ## Build enviroment:
+        * Make sure VM has support for pytorch_cuda >= 11.8
+        (If in doubt use Deep Learning OSS Nvidia Driver AMI GPU PyTorch 2.4.1)
+        * conda env create -f yaml/environment.yml  
+
+    ## Activate environment:
+        * conda activate PrivacyInformedMentalBertEnv
+
+
+# Processing: 
+    * python src/process\_Dreaddit\_dataset.py --data\_dir data/raw/Dreaddit\_dataset
+    * python src/process\_SAD\_dataset.py --data\_dir data/raw/SAD\_dataset
 
 # Training: 
     * To dp finetune model: 
