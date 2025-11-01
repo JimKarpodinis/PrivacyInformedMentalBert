@@ -5,6 +5,22 @@ from typing import Union
 from transformers import AutoTokenizer, TrainingArguments
 
 
+def write_json_file(path: str, dict_: dict):
+
+    with open(path, "w") as f:
+
+        json.dump(dict_, f)
+
+
+def read_json_file(path: str) -> dict: 
+
+    with open(path, "rb") as f:
+
+        dict_ = json.load(f)
+
+    return dict_
+
+
 def define_training_args(
         file_name: str="training_hyperparams.json") -> TrainingArguments:
     
